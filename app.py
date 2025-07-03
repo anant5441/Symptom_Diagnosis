@@ -1,5 +1,5 @@
 import streamlit as st
-from audio import record_audio, transcribe_audio
+from audio import transcribe_audio  # Removed record_audio for compatibility with Streamlit Cloud
 from prompt import build_prompt
 from llm import run_llm, print_sources
 
@@ -9,22 +9,30 @@ st.set_page_config(page_title="Neonatal Triage", page_icon="👶", layout="wide"
 # Sidebar content
 with st.sidebar:
     st.header("🔧 Configuration")
-    st.info("🎙️ Max recording time: **30 seconds**")
+    st.info("🎙️ Max audio length: **30 seconds**")
     st.markdown("""
-    - Click **'Record Audio'** to begin.
-    - Click **'Transcribe & Analyze'** after speaking.
+    - Upload baby's audio file.
+    - Click **'Transcribe & Analyze'** to get triage.
     """)
 
 # Main Title
 st.title("👶 AI Neonatal Assistant - Voice-to-Triage")
 
-# Record audio section
-if st.button("🎙️ Record Audio"):
-    record_audio("patient_voice.mp3")
-    st.success("✅ Audio Recorded: `patient_voice.mp3`")
+# Upload audio file
+uploaded_audio = st.file_uploader("📤 Upload baby's voice recording (MP3/WAV)", type=["mp3", "wav"])
+
+# Store transcript in session_state
+if "transcript" not in st.session_state:
+    st.session_state.transcript = ""
+if "lang" not in st.session_state:
+    st.session_state.lang = ""
 
 # Transcribe and analyze
-if st.button("🧠 Transcribe & Analyze"):
+if st.button("🧠 Transcribe & Analyze") and uploaded_audio is not None:
+    # Save audio locally
+    with open("patient_voice.mp3", "wb") as f:
+        f.write(uploaded_audio.read())
+
     with st.spinner("Transcribing audio..."):
         transcript, lang = transcribe_audio("patient_voice.mp3")
         st.session_state.transcript = transcript
@@ -34,6 +42,7 @@ if st.button("🧠 Transcribe & Analyze"):
     st.info(f"Language Detected: **{lang}**")
     st.write(transcript)
 
+    # Build triage prompt
     prompt = build_prompt(transcript)
 
     with st.spinner("Running medical triage..."):
@@ -43,15 +52,17 @@ if st.button("🧠 Transcribe & Analyze"):
     st.subheader("🧠 AI Triage Response")
     st.write(result["result"])
 
-    # Show sources
-    # st.subheader("📄 Source Documents Used")
+    # Print sources in terminal (if running locally)
     print_sources(result["source_documents"])
+
+elif st.button("🧠 Transcribe & Analyze") and uploaded_audio is None:
+    st.warning("⚠️ Please upload an audio file before analyzing.")
 
 # Disclaimer
 st.markdown("""
 ---
 ⚠️ **Disclaimer:**
-- The suggestions and home remedies provided are for informational purposes only and should not be considered as medical advice.
+- The suggestions and home remedies provided are for informational purposes only and should not be considered medical advice.
 - Always consult a qualified healthcare provider before starting any new treatment or remedy.
-- The system is not responsible for any adverse effects caused by the use of suggested remedies.
+- This system is not responsible for any adverse effects caused by the use of suggested remedies.
 """)
