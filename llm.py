@@ -104,6 +104,7 @@ from dotenv import load_dotenv
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import FAISS
 from langchain_chroma import Chroma
 from langchain.chains import RetrievalQA
 from langchain.retrievers.multi_query import MultiQueryRetriever
@@ -143,17 +144,15 @@ def create_vector_store(chunks, embedding_model, persist_directory=CHROMA_DIR):
     )
 
 def get_vector_store():
-    """Load existing or create new Chroma vector store."""
     embedding_model = get_embedding_model()
-    
-    if os.path.exists("chroma_db/chroma.sqlite3"):
-        logging.info("Loading existing Chroma vector store...")
-        return Chroma(persist_directory=CHROMA_DIR, embedding_function=embedding_model)
+    if os.path.exists("faiss_index"):
+        return FAISS.load_local("faiss_index", embedding_model)
     else:
-        logging.info("Creating new Chroma vector store from PDFs...")
         documents = load_pdf("data")
         chunks = create_chunks(documents)
-        return create_vector_store(chunks, embedding_model)
+        vectorstore = create_vector_store(chunks, embedding_model)
+        vectorstore.save_local("faiss_index")
+        return vectorstore
 
 def get_llm():
     """Initialize Groq LLM."""
