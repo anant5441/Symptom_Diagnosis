@@ -3,12 +3,13 @@ import logging
 from dotenv import load_dotenv
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain.chains import RetrievalQA
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain_groq import ChatGroq  
 
+os.environ["CHROMA_API_IMPL"] = "chromadb.api.local.LocalAPI"
 os.environ["STREAMLIT_SERVER_RUN_ON_SAVE"] = "false"
 
 # Load environment variables
