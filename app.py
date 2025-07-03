@@ -1,68 +1,58 @@
 import streamlit as st
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, ClientSettings
+import av
+import tempfile
 from audio import transcribe_audio
 from prompt import build_prompt
 from llm import run_llm, print_sources
 
-# Page configuration
+# Streamlit config
 st.set_page_config(page_title="Neonatal Triage", page_icon="👶", layout="wide")
-
-# Sidebar content
-with st.sidebar:
-    st.header("🔧 Configuration")
-    st.info("🎙️ Max audio length: **30 seconds**")
-    st.markdown("""
-    - Upload baby's audio file.
-    - Click **'Transcribe & Analyze'** to get triage.
-    """)
-
-# Main Title
 st.title("👶 AI Neonatal Assistant - Voice-to-Triage")
 
-# File upload
-uploaded_audio = st.file_uploader("📤 Upload baby's voice recording (MP3 or WAV)", type=["mp3", "wav"])
+st.sidebar.header("🔧 Configuration")
+st.sidebar.info("🎙️ Record up to ~30 seconds. Click stop to process.")
 
-# Initialize session state
-if "transcript" not in st.session_state:
-    st.session_state.transcript = ""
-if "lang" not in st.session_state:
-    st.session_state.lang = ""
+# Create a temporary WAV file
+audio_buffer = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
 
-# Transcribe and analyze button
-analyze = st.button("🧠 Transcribe & Analyze")
+# Audio Processor
+class AudioProcessor:
+    def __init__(self):
+        self.frames = []
 
-if analyze:
-    if uploaded_audio is not None:
-        # Save uploaded file locally
-        with open("patient_voice.mp3", "wb") as f:
-            f.write(uploaded_audio.read())
+    def recv(self, frame: av.AudioFrame) -> av.AudioFrame:
+        self.frames.append(frame)
+        return frame
 
-        with st.spinner("Transcribing audio..."):
-            transcript, lang = transcribe_audio("patient_voice.mp3")
-            st.session_state.transcript = transcript
-            st.session_state.lang = lang
+    def get_audio_bytes(self):
+        return b''.join(f.planes[0].to_bytes() for f in self.frames)
 
-        st.subheader("📝 Transcription")
-        st.info(f"Language Detected: **{lang}**")
-        st.write(transcript)
+# Start the mic
+ctx = webrtc_streamer(
+    key="audio",
+    mode=WebRtcMode.SENDONLY,
+    in_audio=True,
+    client_settings=ClientSettings(media_stream_constraints={"audio": True, "video": False}),
+    audio_processor_factory=AudioProcessor,
+)
 
-        # Prompt construction
-        prompt = build_prompt(transcript)
+if ctx and ctx.audio_processor and st.button("🛑 Stop & Transcribe"):
+    with st.spinner("Processing audio..."):
+        audio_bytes = ctx.audio_processor.get_audio_bytes()
+        with open(audio_buffer.name, "wb") as f:
+            f.write(audio_bytes)
+        transcript, lang = transcribe_audio(audio_buffer.name)
 
-        with st.spinner("Running medical triage..."):
-            result = run_llm(prompt)
+    st.subheader("📝 Transcription")
+    st.info(f"Language Detected: **{lang}**")
+    st.write(transcript)
 
-        st.subheader("🧠 AI Triage Response")
-        st.write(result["result"])
+    prompt = build_prompt(transcript)
 
-        print_sources(result["source_documents"])
-    else:
-        st.warning("⚠️ Please upload an audio file before analyzing.")
+    with st.spinner("Running medical triage..."):
+        result = run_llm(prompt)
 
-# Disclaimer
-st.markdown("""
----
-⚠️ **Disclaimer**:
-- The suggestions and home remedies provided are for informational purposes only and should not be considered medical advice.
-- Always consult a qualified healthcare provider before starting any new treatment or remedy.
-- This system is not responsible for any adverse effects caused by the use of suggested remedies.
-""")
+    st.subheader("🧠 AI Triage Response")
+    st.write(result["result"])
+    print_sources(result["source_documents"])
