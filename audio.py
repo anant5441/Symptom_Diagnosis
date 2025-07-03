@@ -30,7 +30,7 @@ def record_audio(filename):
 
 def transcribe_audio(filepath):
     try:
-        import whisper  # defer import to allow exception handling
+        import whisper
         model = whisper.load_model(WHISPER_MODEL)
         result = model.transcribe(filepath)
         return result["text"], result["language"]
