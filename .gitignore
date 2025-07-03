@@ -1,0 +1,7 @@
+﻿chroma_db/
+data/
+__pycache__/
+*.mp3
+*.sqlite3
+*.bin
+.env
