@@ -1,4 +1,5 @@
 ﻿chroma_db/
+faiss_index/
 data/
 __pycache__/
 *.mp3
