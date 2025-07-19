@@ -8,6 +8,12 @@ A  Clinical assistant for neonatal triage, leveraging voice input and large lang
 - **Evidence-Based:** Uses standard neonatal protocols and references for recommendations.
 - **Source Transparency:** Shows source documents used for LLM responses.
 
+
+## 🌐 Multilingual Support
+- The app uses OpenAI Whisper for speech-to-text, which supports transcription in many languages and automatically detects the spoken language.
+- The detected language is displayed after transcription.
+- **Note:** The AI triage and prompt are optimized for English. For best results, provide input in English. Other languages may work for transcription, but the LLM's understanding and response quality may vary depending on its multilingual capabilities.
+
 ## How It Works
 1. **Record Audio:** Click 'Record Audio' and describe the baby's symptoms.
 2. **Transcribe & Analyze:** The app transcribes the audio and analyzes the text using a prompt designed for neonatal triage.
